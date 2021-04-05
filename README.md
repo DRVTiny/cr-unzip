@@ -18,11 +18,15 @@ crystal build -Dpreview_mt --release src/cr-unzip.cr -o bin/cr-unzip
 
 ## Usage
 ```
-cr-unzip [-q|-d] [-n N_FIBERS] zip_file_path
+[CRYSTAL_WORKERS=$N_THREADS] cr-unzip [-q|-d] [-n $N_FIBERS] $ZIP_FILE_PATH
 -q 	   Use queues to distribute jobs among threads
 -d 	   Distribute equal count of unpacked files among threads
 -x 	   Turn on debugging
 -h 	   Show help message
+
+$N_THREADS - number of os threads to use (aka N)
+$N_FIBERS  - number of Crystal fibers to use (aka M)
+$ZIP_FILE_PATH - path to your zip file. File name must have ".zip" extension
 ```
 
 ## Contributing
