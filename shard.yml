@@ -1,0 +1,17 @@
+name: cr-unzip
+version: 0.1.0
+
+authors:
+  - Andrey A. Konovalov <drvtiny@gmail.com>
+
+targets:
+  cr-unzip:
+    main: src/cr-unzip.cr
+
+crystal: 1.0.0
+
+dependencies:
+  app_name:
+    github: DRVTiny/app_name
+
+license: MIT
