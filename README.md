@@ -18,11 +18,16 @@ crystal build -Dpreview_mt --release src/cr-unzip.cr -o bin/cr-unzip
 
 ## Usage
 ```
-cr-unzip [-q|-d] [-n N_FIBERS] zip_file_path
--q 	   Use queues to distribute jobs among threads
--d 	   Distribute equal count of unpacked files among threads
--x 	   Turn on debugging
--h 	   Show help message
+cr-unzip 
+	[-p JOB_DISTR_POLICY] [-n N_FIBERS] [-d TARGET_DIR] zip_file_path
+		or
+	-h
+-p, --policy qu[eue] | eq[ual]
+	Use the specified job distribution policy: queued or equal(-sized)
+-d, --destination TARGET_PATH
+	Specify target directory for unpack. By default zip file will be unpacked to the current working directory
+-x	Turn on debug output
+-h	Show help message
 ```
 
 ## Contributing

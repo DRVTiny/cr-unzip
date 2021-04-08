@@ -34,10 +34,23 @@ module ZipUnpackFiberized
   fl_use_queue = false
   fl_use_div_et_imp = false
   n_fibers = 0
+  exec_dir = ""
 	OptionParser.parse do |parser|
 		parser.banner = "Usage: #{AppName.exec_name} [arguments]"
-		parser.on("-q", "--queue", "Use queue to distribute jobs among threads") { fl_use_queue = true }
-		parser.on("-d", "--divetimpera", "Use divide et impera policy to distribute jobs among threads") { fl_use_div_et_imp = true }
+		parser.on("-d DEST_DIRECTORY", "--destination=DIRECTORY", "Destination directory path") do |dir_path|
+			exec_dir = Dir.current
+			Dir.cd dir_path
+		end
+		parser.on("-p JOB_DISTR_STRATEGY", "--policy JOB_DISTR_STRATEGY", "Policy to be used to ditribute jobs among threads. Maybe one of: queue and equal") do |distr_pol|
+			case distr_pol
+				when /^qu(?:eue)?$/i
+					fl_use_queue = true
+				when /^eq(?:ual)?/i
+					fl_use_div_et_imp = true
+				else
+					raise %q[--policy must be "queue" (or shorter: "qu") or "equal" (or shorter: "eq")]
+			end
+		end
 		parser.on("-n N_FIBERS", "--fibers=N_FIBERS", "Number of fibers to use") do |n|
 			n_fibers = n.to_i
 			raise "invalid number of fibers: must be >1" if n_fibers <= 1
@@ -53,17 +66,23 @@ module ZipUnpackFiberized
 			exit(1)
 		end
 	end
+	
 	n_fibers = Crystal::System.cpu_count if n_fibers == 0
+	
 	if fl_use_queue && fl_use_div_et_imp
-		raise "You cant specify both --queue and --divetimpera: this options is mutual exclusive"
+		raise "You cant specify both --ploqueue and --divetimpera: this options is mutual exclusive"
 	elsif ! (fl_use_queue || fl_use_div_et_imp)
 		fl_use_div_et_imp = true
 	end
 	
 	if ARGV[0]?
-		zip_file_pth = ARGV[0]
+		zip_file_pth = ARGV[0].strip
+		raise "Invalid filename" if zip_file_pth.size == 0
+		if exec_dir.size > 0 && zip_file_pth !~ /^\//
+			zip_file_pth = Path[zip_file_pth].expand(base: exec_dir).to_s
+		end
 	else
-		raise "You must specify zip file path as a last argument"
+		raise "you must specify zip file path as a last argument"
 	end
 	
 	zip_file_pth =~ /\.zip$/ || raise "file extension must be '.zip'"
@@ -80,23 +99,32 @@ module ZipUnpackFiberized
 		
 		ch_end = Channel(Nil).new		
 		n_fibers = Crystal::System.cpu_count
+		
 		if fl_use_div_et_imp
 			n_files = files2extract.size 
 			n_files_per_thread =  n_files // n_fibers
 			rmn_files =           n_files % n_fibers
 			si, ei = 0, 0
-			n_fibers.times do
+			n_fibers.times do |fiber_num|
 				ei = si + n_files_per_thread + (rmn_files > 0 ? 1 : 0) - 1
 				rmn_files -= 1
 				ssi, eei = si, ei
-				spawn do
+				fiber_work = ->() do
 					(ssi..eei).each do |i|
 						unpack_file files2extract[i]
 					end
-					ch_end.send(nil)
+					ch_end.send(nil) if fiber_num > 0
 				end
+				
+				if fiber_num > 0
+					spawn &fiber_work
+				else
+					fiber_work.call
+				end
+				
 				si = ei + 1
 			end
+			n_fibers -= 1
 		else
 			ch_buf_size = files2extract.size + n_fibers
 			ch_files = Channel(Compress::Zip::File::Entry | Nil).new(ch_buf_size)
