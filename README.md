@@ -13,6 +13,7 @@ Or, if it does not work for you, - install latest Crystal compiler according to 
 Than 
 ```
 cd cr-unzip
+shards install
 crystal build -Dpreview_mt --release src/cr-unzip.cr -o bin/cr-unzip
 ```
 
